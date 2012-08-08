@@ -3,6 +3,7 @@ package net.thunderklaus
 import sbt._
 import sbt.Keys._
 import java.io.File
+import com.github.siasia.WarPlugin._
 import com.github.siasia.WebPlugin._
 import com.github.siasia.PluginKeys._
 
@@ -12,6 +13,7 @@ object GwtPlugin extends Plugin {
 
   val gwtModules = TaskKey[Seq[String]]("gwt-modules")
   val gwtCompile = TaskKey[Unit]("gwt-compile", "Runs the GWT compiler")
+  val prepareWebapp = TaskKey[Seq[(File, String)]]("prepare-webapp")
   val gwtDevMode = TaskKey[Unit]("gwt-devmode", "Runs the GWT devmode shell")
   val gwtVersion = SettingKey[String]("gwt-version")
   val gwtTemporaryPath = SettingKey[File]("gwt-temporary-path")
@@ -80,7 +82,7 @@ object GwtPlugin extends Plugin {
     gwtCompile <<= (classDirectory in Compile, dependencyClasspath in Gwt, thisProject in Gwt, state in Gwt, javaSource in Compile, javaOptions in Gwt,
                     gwtModules, gwtTemporaryPath, streams) map {
       (classDirectory, dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, warPath, s) => {
-        val cp = Seq(classDirectory.absolutePath) ++ 
+        val cp = Seq(classDirectory.absolutePath) ++
                  dependencyClasspath.map(_.data.absolutePath) ++
                  Seq(javaSource.absolutePath) ++
                  getDepSources(thisProject.dependencies, pstate)
@@ -93,11 +95,22 @@ object GwtPlugin extends Plugin {
     },
     webappResources in Compile <+= (gwtTemporaryPath) { (t: File) => t },
 
-    packageWar in Compile <<= (packageWar in Compile).dependsOn(gwtCompile),
+    // make package-war depend on gwt-compile
+    packageWar in Compile <<= (packageWar in Compile).dependsOn(gwtCompile in Compile),
+
+    // create a duplicate of package-war and make gwt-devmode depend on that; we don't want
+    // gwt-devmode to depend on the real package-war because that depends on gwt-compile and we
+    // don't want to have to run a gwt-compile every time we run gwt-devmode, we just want to do
+    // everything else that package-war does
+    webappResources <<= (sourceDirectory in Compile)(sd => Seq(sd / "webapp")),
+    webappResources <++= Defaults.inDependencies(webappResources, ref => Nil, false) apply { _.flatten },
+    warPostProcess := { () => () },
+    prepareWebapp in Gwt <<= packageWarTask(DefaultClasspathConf),
+    gwtDevMode <<= gwtDevMode.dependsOn(compile in Compile, prepareWebapp in Gwt),
 
     commands ++= Seq(gwtSetModule)
   )
-  
+
   def getDepSources(deps : Seq[ClasspathDep[ProjectRef]], state : State) : Set[String] = {
     var sources = Set.empty[String]
     val structure = Project.extract(state).structure
