@@ -6,6 +6,8 @@ name := "sbt-gwt-plugin"
 
 version := "1.1-SNAPSHOT"
 
+scalacOptions ++= Seq("-unchecked", "-deprecation")
+
 libraryDependencies <+= sbtVersion(v => "com.github.siasia" %% "xsbt-web-plugin" % (v+"-0.2.11.1"))
 
 seq(ScriptedPlugin.scriptedSettings: _*)
