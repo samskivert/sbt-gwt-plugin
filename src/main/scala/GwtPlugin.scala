@@ -22,7 +22,7 @@ object GwtPlugin extends Plugin {
 
   var gwtModule: Option[String] = None
   val gwtSetModule = Command.single("gwt-set-module") { (state, arg) =>
-    Project.evaluateTask(gwtModules, state) match {
+    Project.runTask(gwtModules, state) map(_._2) match {
       case Some(Value(mods)) => {
         gwtModule = mods.find(_.toLowerCase.contains(arg.toLowerCase))
         gwtModule match {
@@ -41,7 +41,7 @@ object GwtPlugin extends Plugin {
     managedClasspath in Gwt <<= (managedClasspath in Compile, update) map {
       (cp, up) => cp ++ Classpaths.managedJars(Provided, Set("src"), up)
     },
-    unmanagedClasspath in Gwt <<= (unmanagedClasspath in Compile).identity,
+    unmanagedClasspath in Gwt <<= (unmanagedClasspath in Compile),
     gwtTemporaryPath <<= (target) { (target) => target / "gwt" },
     gwtWebappPath <<= (target) { (target) => target / "webapp" },
     gwtVersion := "2.3.0",
@@ -59,7 +59,7 @@ object GwtPlugin extends Plugin {
                     gwtModules, gaeSdkPath, gwtWebappPath, streams) map {
       (dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, gaeSdkPath, warPath, s) => {
         def gaeFile (path :String*) = gaeSdkPath.map(_ +: path mkString(File.separator))
-        val module = gwtModule.getOrElse(gwtModules.headOption.getOrElse(error("Found no .gwt.xml files.")))
+        val module = gwtModule.getOrElse(gwtModules.headOption.getOrElse(sys.error("Found no .gwt.xml files.")))
         val cp = dependencyClasspath.map(_.data.absolutePath) ++ getDepSources(thisProject.dependencies, pstate) ++
           gaeFile("lib", "appengine-tools-api.jar").toList :+ javaSource.absolutePath
         val javaArgs = javaOpts ++ (gaeFile("lib", "agent", "appengine-agent.jar") match {
