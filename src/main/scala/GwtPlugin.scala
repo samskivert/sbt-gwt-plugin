@@ -11,10 +11,13 @@ object GwtPlugin extends Plugin {
 
   lazy val Gwt = config("gwt") extend (Compile)
 
-  val gwtModules = TaskKey[Seq[String]]("gwt-modules")
-  val gwtCompile = TaskKey[Unit]("gwt-compile", "Runs the GWT compiler")
+  // tasks
   val prepareWebapp = TaskKey[Seq[(File, String)]]("prepare-webapp")
+  val gwtCompile = TaskKey[Unit]("gwt-compile", "Runs the GWT compiler")
   val gwtDevMode = TaskKey[Unit]("gwt-devmode", "Runs the GWT devmode shell")
+
+  // settings
+  val gwtModules = TaskKey[Seq[String]]("gwt-modules")
   val gwtVersion = SettingKey[String]("gwt-version")
   val gwtTemporaryPath = SettingKey[File]("gwt-temporary-path")
   val gwtWebappPath = SettingKey[File]("gwt-webapp-path")
