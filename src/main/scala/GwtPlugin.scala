@@ -18,6 +18,7 @@ object GwtPlugin extends Plugin {
   val gwtVersion = SettingKey[String]("gwt-version")
   val gwtTemporaryPath = SettingKey[File]("gwt-temporary-path")
   val gwtWebappPath = SettingKey[File]("gwt-webapp-path")
+  val gwtDevModeArgs = TaskKey[Seq[String]]("gwt-devmode-args")
   val gaeSdkPath = SettingKey[Option[String]]("gae-sdk-path")
 
   var gwtModule: Option[String] = None
@@ -45,6 +46,7 @@ object GwtPlugin extends Plugin {
     gwtTemporaryPath <<= (target) { (target) => target / "gwt" },
     gwtWebappPath <<= (target) { (target) => target / "webapp" },
     gwtVersion := "2.3.0",
+    gwtDevModeArgs := Seq(),
     gaeSdkPath := None,
     libraryDependencies <++= gwtVersion(gwtVersion => Seq(
       "com.google.gwt" % "gwt-user" % gwtVersion % "provided",
@@ -55,9 +57,8 @@ object GwtPlugin extends Plugin {
       (javaSource, resources) => findGwtModules(javaSource) ++ findGwtModules(resources)
     },
 
-    gwtDevMode <<= (dependencyClasspath in Gwt, thisProject in Gwt,  state in Gwt, javaSource in Compile, javaOptions in Gwt,
-                    gwtModules, gaeSdkPath, gwtWebappPath, streams) map {
-      (dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, gaeSdkPath, warPath, s) => {
+    gwtDevMode <<= (dependencyClasspath in Gwt, thisProject in Gwt,  state in Gwt, javaSource in Compile, javaOptions in Gwt, gwtModules, gwtDevModeArgs, gaeSdkPath, gwtWebappPath, streams) map {
+      (dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, gwtDevModeArgs, gaeSdkPath, warPath, s) => {
         def gaeFile (path :String*) = gaeSdkPath.map(_ +: path mkString(File.separator))
         val module = gwtModule.getOrElse(gwtModules.headOption.getOrElse(sys.error("Found no .gwt.xml files.")))
         val cp = dependencyClasspath.map(_.data.absolutePath) ++ getDepSources(thisProject.dependencies, pstate) ++
@@ -66,11 +67,11 @@ object GwtPlugin extends Plugin {
           case None => Nil
           case Some(path) => List("-javaagent:" + path)
         })
-        val gwtArgs = gaeSdkPath match {
+        val gwtArgs = gwtDevModeArgs ++ (gaeSdkPath match {
           case None => Nil
           case Some(path) => List(
             "-server", "com.google.appengine.tools.development.gwt.AppEngineLauncher")
-        }
+        })
         val command = mkGwtCommand(
           cp, javaArgs, "com.google.gwt.dev.DevMode", warPath, gwtArgs, module)
         s.log.info("Running GWT devmode on: " + module)
@@ -79,8 +80,7 @@ object GwtPlugin extends Plugin {
       }
     },
 
-    gwtCompile <<= (classDirectory in Compile, dependencyClasspath in Gwt, thisProject in Gwt, state in Gwt, javaSource in Compile, javaOptions in Gwt,
-                    gwtModules, gwtTemporaryPath, streams) map {
+    gwtCompile <<= (classDirectory in Compile, dependencyClasspath in Gwt, thisProject in Gwt, state in Gwt, javaSource in Compile, javaOptions in Gwt, gwtModules, gwtTemporaryPath, streams) map {
       (classDirectory, dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, warPath, s) => {
         val cp = Seq(classDirectory.absolutePath) ++
                  dependencyClasspath.map(_.data.absolutePath) ++
