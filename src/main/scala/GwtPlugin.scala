@@ -18,7 +18,7 @@ object GwtPlugin extends Plugin {
   val gwtVersion = SettingKey[String]("gwt-version")
   val gwtTemporaryPath = SettingKey[File]("gwt-temporary-path")
   val gwtWebappPath = SettingKey[File]("gwt-webapp-path")
-  val gwtDevModeArgs = TaskKey[Seq[String]]("gwt-devmode-args")
+  val gwtDevModeArgs = SettingKey[Seq[String]]("gwt-devmode-args")
   val gaeSdkPath = SettingKey[Option[String]]("gae-sdk-path")
 
   var gwtModule: Option[String] = None
