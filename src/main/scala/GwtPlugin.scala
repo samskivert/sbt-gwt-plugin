@@ -143,7 +143,7 @@ object GwtPlugin extends Plugin {
     def get[A] = setting[A](structure)_
     deps.foreach{
     dep=>
-      sources +=  (get(dep.project, Keys.sourceDirectory, Compile).get.toString + "/java")
+      sources +=  (get(dep.project, Keys.javaSource, Compile).get.toString)
       sources ++= getDepSources(Project.getProject(dep.project, structure).get.dependencies, state)
     }
     sources
