@@ -69,8 +69,10 @@ object GwtPlugin extends Plugin {
       (dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, gwtDevModeArgs, gaeSdkPath, warPath, s) => {
         def gaeFile (path :String*) = gaeSdkPath.map(_ +: path mkString(File.separator))
         val module = gwtModule.getOrElse(gwtModules.headOption.getOrElse(sys.error("Found no .gwt.xml files.")))
-        val cp = dependencyClasspath.map(_.data.absolutePath) ++ getDepSources(thisProject.dependencies, pstate) ++
-          gaeFile("lib", "appengine-tools-api.jar").toList :+ javaSource.absolutePath
+        val cp = dependencyClasspath.map(_.data.absolutePath) ++
+                 gaeFile("lib", "appengine-tools-api.jar").toList ++
+                 Seq(javaSource.absolutePath) ++
+                 getDepSources(thisProject.dependencies, pstate)
         val javaArgs = javaOpts ++ (gaeFile("lib", "agent", "appengine-agent.jar") match {
           case None => Nil
           case Some(path) => List("-javaagent:" + path)
@@ -88,10 +90,13 @@ object GwtPlugin extends Plugin {
       }
     },
 
-    gwtSuperDevMode <<= (dependencyClasspath in Gwt, thisProject in Gwt,  state in Gwt, javaSource in Compile, javaOptions in Gwt, gwtModules, gwtSuperDevModeArgs, gaeSdkPath, gwtWebappPath, streams) map {
-      (dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, gwtSuperDevModeArgs, gaeSdkPath, warPath, s) => {
+    gwtSuperDevMode <<= (classDirectory in Compile, dependencyClasspath in Gwt, thisProject in Gwt,  state in Gwt, javaSource in Compile, javaOptions in Gwt, gwtModules, gwtSuperDevModeArgs, streams) map {
+      (classDirectory, dependencyClasspath, thisProject, pstate, javaSource, javaOpts, gwtModules, gwtSuperDevModeArgs, s) => {
         val module = gwtModule.getOrElse(gwtModules.headOption.getOrElse(sys.error("Found no .gwt.xml files.")))
-        val cp = dependencyClasspath.map(_.data.absolutePath) ++ getDepSources(thisProject.dependencies, pstate) :+ javaSource.absolutePath
+        val cp = Seq(classDirectory.absolutePath) ++
+                 dependencyClasspath.map(_.data.absolutePath) ++
+                 Seq(javaSource.absolutePath) ++
+                 getDepSources(thisProject.dependencies, pstate)
         val gwtArgs = gwtSuperDevModeArgs ++ Seq("-src", javaSource.absolutePath)
         val command = mkGwtCommand(
           cp, javaOpts, "com.google.gwt.dev.codeserver.CodeServer", gwtArgs, List(module))
